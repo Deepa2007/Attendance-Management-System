@@ -217,6 +217,7 @@ def test_postgres_rejects_second_active_session(report_test_data):
     day = date(2026, 10, 12)
 
     first_session = AttendanceSession(
+        tenant_id=employee.tenant_id,
         employee_id=employee.id,
         checked_in_at=local_time(day, 9),
         checked_out_at=None,
@@ -241,6 +242,7 @@ def test_postgres_rejects_overlapping_completed_sessions(report_test_data):
     day = date(2026, 10, 12)
 
     first_session = AttendanceSession(
+        tenant_id=employee.tenant_id,
         employee_id=employee.id,
         checked_in_at=local_time(day, 9),
         checked_out_at=local_time(day, 14),
@@ -266,18 +268,21 @@ def test_postgres_allows_adjacent_sessions(report_test_data):
     day = date(2026, 10, 12)
 
     first_session = AttendanceSession(
+        tenant_id=employee.tenant_id,
         employee_id=employee.id,
         checked_in_at=local_time(day, 9),
-        checked_out_at=local_time(day, 12),
+        checked_out_at=local_time(day,12),
     )
+    db.add(first_session)
+    db.flush()
     second_session = AttendanceSession(
+        tenant_id=employee.tenant_id,
         employee_id=employee.id,
         checked_in_at=local_time(day, 12),
-        checked_out_at=local_time(day, 15),
+        checked_out_at=local_time(day,15),
     )
-
-    db.add_all([first_session, second_session])
+    db.add(second_session)
     db.flush()
-
+    
     assert first_session.id is not None
     assert second_session.id is not None
