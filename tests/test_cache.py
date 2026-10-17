@@ -27,12 +27,13 @@ def make_report() -> EmployeeAttendanceReportResponse:
     )
 
 
-def test_report_cache_key_includes_employee_and_dates():
+def test_report_cache_key_includes_tenant_employee_and_dates():
     assert report_cache_key(
+        9,
         12,
         date(2026, 10, 1),
         date(2026, 10, 7),
-    ) == "attendance:report:12:2026-10-01:2026-10-07"
+    ) == "attendance:report:9:12:2026-10-01:2026-10-07"
 
 
 @patch("app.services.cache.get_redis")
@@ -41,7 +42,7 @@ def test_get_cached_report_returns_none_when_missing(get_redis):
     client.get.return_value = None
     get_redis.return_value = client
 
-    assert get_cached_report(1, date(2026, 10, 12), date(2026, 10, 18)) is None
+    assert get_cached_report(9, 1, date(2026, 10, 12), date(2026, 10, 18)) is None
 
 
 @patch("app.services.cache.get_redis")
@@ -54,8 +55,8 @@ def test_set_and_get_cached_report(get_redis):
     client.get.side_effect = lambda key: store.get(key)
     get_redis.return_value = client
 
-    set_cached_report(report)
-    cached = get_cached_report(1, date(2026, 10, 12), date(2026, 10, 18))
+    set_cached_report(9, report)
+    cached = get_cached_report(9, 1, date(2026, 10, 12), date(2026, 10, 18))
 
     assert cached is not None
     assert cached.employee_id == 1
@@ -66,13 +67,13 @@ def test_set_and_get_cached_report(get_redis):
 def test_invalidate_employee_reports_deletes_matching_keys(get_redis):
     client = MagicMock()
     client.scan_iter.return_value = [
-        "attendance:report:1:2026-10-12:2026-10-18",
-        "attendance:report:1:2026-10-01:2026-10-31",
+        "attendance:report:9:1:2026-10-12:2026-10-18",
+        "attendance:report:9:1:2026-10-01:2026-10-31",
     ]
     get_redis.return_value = client
 
-    invalidate_employee_reports(1)
+    invalidate_employee_reports(9, 1)
 
     client.delete.assert_called_once()
     deleted_keys = client.delete.call_args.args
-    assert "attendance:report:1:2026-10-12:2026-10-18" in deleted_keys
+    assert "attendance:report:9:1:2026-10-12:2026-10-18" in deleted_keys

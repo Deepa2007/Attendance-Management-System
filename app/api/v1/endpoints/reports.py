@@ -31,7 +31,12 @@ def employee_attendance_report(
 ) -> EmployeeAttendanceReportResponse:
     """Return an employee attendance report. Admin access required."""
 
-    cached = get_cached_report(employee_id, start_date, end_date)
+    cached = get_cached_report(
+        admin.tenant_id,
+        employee_id,
+        start_date,
+        end_date,
+    )
     if cached is not None:
         return cached
 
@@ -41,6 +46,7 @@ def employee_attendance_report(
             employee_id=employee_id,
             start_date=start_date,
             end_date=end_date,
+            tenant_id=admin.tenant_id,
         )
     except ReportEmployeeNotFoundError as exc:
         raise HTTPException(
@@ -53,5 +59,5 @@ def employee_attendance_report(
             detail=str(exc),
         ) from exc
 
-    set_cached_report(report)
+    set_cached_report(admin.tenant_id, report)
     return report

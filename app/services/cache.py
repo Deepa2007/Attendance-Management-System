@@ -13,17 +13,19 @@ REPORT_CACHE_PREFIX = "attendance:report"
 
 
 def report_cache_key(
+    tenant_id: int,
     employee_id: int,
     start_date: date,
     end_date: date,
 ) -> str:
     return (
-        f"{REPORT_CACHE_PREFIX}:{employee_id}:"
+        f"{REPORT_CACHE_PREFIX}:{tenant_id}:{employee_id}:"
         f"{start_date.isoformat()}:{end_date.isoformat()}"
     )
 
 
 def get_cached_report(
+    tenant_id: int,
     employee_id: int,
     start_date: date,
     end_date: date,
@@ -31,7 +33,7 @@ def get_cached_report(
     """Return a cached attendance report, or None if missing or Redis is down."""
     try:
         payload = get_redis().get(
-            report_cache_key(employee_id, start_date, end_date)
+            report_cache_key(tenant_id, employee_id, start_date, end_date)
         )
     except RedisError:
         logger.warning("Failed to read report cache", exc_info=True)
@@ -44,12 +46,14 @@ def get_cached_report(
 
 
 def set_cached_report(
+    tenant_id: int,
     report: EmployeeAttendanceReportResponse,
 ) -> None:
     """Store an attendance report in Redis. Failures are ignored."""
     try:
         get_redis().setex(
             report_cache_key(
+                tenant_id,
                 report.employee_id,
                 report.start_date,
                 report.end_date,
@@ -61,9 +65,9 @@ def set_cached_report(
         logger.warning("Failed to write report cache", exc_info=True)
 
 
-def invalidate_employee_reports(employee_id: int) -> None:
+def invalidate_employee_reports(tenant_id: int, employee_id: int) -> None:
     """Drop cached reports for an employee after attendance changes."""
-    pattern = f"{REPORT_CACHE_PREFIX}:{employee_id}:*"
+    pattern = f"{REPORT_CACHE_PREFIX}:{tenant_id}:{employee_id}:*"
 
     try:
         client = get_redis()

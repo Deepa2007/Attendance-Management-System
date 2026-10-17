@@ -10,8 +10,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.attendance import AttendanceSession
-from app.models.employee import Employee
 from app.services.cache import invalidate_employee_reports
+from app.services.employees import get_employee
 
 
 class EmployeeNotFoundError(Exception):
@@ -29,8 +29,9 @@ class ActiveAttendanceSessionError(Exception):
 def check_in_employee(
     db: Session,
     employee_id: int,
+    tenant_id: int,
 ) -> AttendanceSession:
-    employee = db.get(Employee, employee_id)
+    employee = get_employee(db, employee_id, tenant_id)
 
     if employee is None:
         raise EmployeeNotFoundError
@@ -49,6 +50,7 @@ def check_in_employee(
         raise ActiveAttendanceSessionError
 
     attendance = AttendanceSession(
+        tenant_id=tenant_id,
         employee_id=employee_id,
         checked_in_at=datetime.now(timezone.utc),
     )
@@ -70,7 +72,7 @@ def check_in_employee(
         raise
 
     db.refresh(attendance)
-    invalidate_employee_reports(employee_id)
+    invalidate_employee_reports(tenant_id, employee_id)
 
     return attendance
 
@@ -82,8 +84,9 @@ class NoActiveAttendanceSessionError(Exception):
 def check_out_employee(
     db: Session,
     employee_id: int,
+    tenant_id: int,
 ) -> AttendanceSession:
-    employee = db.get(Employee, employee_id)
+    employee = get_employee(db, employee_id, tenant_id)
 
     if employee is None:
         raise EmployeeNotFoundError
@@ -113,7 +116,7 @@ def check_out_employee(
 
     db.commit()
     db.refresh(attendance)
-    invalidate_employee_reports(employee_id)
+    invalidate_employee_reports(tenant_id, employee_id)
 
     return attendance
 
@@ -122,8 +125,9 @@ def get_daily_attendance(
     db: Session,
     employee_id: int,
     attendance_date: date,
+    tenant_id: int,
 ) -> DailyAttendanceResponse:
-    employee = db.get(Employee, employee_id)
+    employee = get_employee(db, employee_id, tenant_id)
 
     if employee is None:
         raise EmployeeNotFoundError
@@ -188,8 +192,9 @@ def get_weekly_attendance(
     db: Session,
     employee_id: int,
     week_date: date,
+    tenant_id: int,
 ) -> WeeklyAttendanceResponse:
-    employee = db.get(Employee, employee_id)
+    employee = get_employee(db, employee_id, tenant_id)
 
     if employee is None:
         raise EmployeeNotFoundError

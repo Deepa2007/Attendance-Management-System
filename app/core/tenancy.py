@@ -1,0 +1,1 @@
+TENANT_SLUG_HEADER = "X-Tenant-Slug"
